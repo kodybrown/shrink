@@ -84,9 +84,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\PowerCode\ConsoleUtils.cs">
-      <Link>ConsoleUtils.cs</Link>
-    </Compile>
+    <Compile Include="ConsoleUtils.cs" />
     <Compile Include="shrink.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -101,7 +99,7 @@
     <CommitVersion>N/A</CommitVersion>
   </PropertyGroup>
   <PropertyGroup>
-    <GitBinPath>C:\Program Files (x86)\Git\bin</GitBinPath>
+    <GitBinPath>C:\Tools\Git\bin</GitBinPath>
   </PropertyGroup>
   <UsingTask TaskName="GitVersion" AssemblyFile="c:\Kody\Root\GitVersion.dll" />
   <Target Name="BeforeBuild">
