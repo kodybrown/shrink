@@ -14,15 +14,16 @@ using System.Resources;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-[assembly: AssemblyTitle("shrink ver:1.4.30415.4")]
+[assembly: AssemblyTitle("shrink ver:1.4.30605.5")]
 [assembly: AssemblyDescription("shrinks the current console window to 80 columns by 25 rows.")]
 [assembly: AssemblyCompany("Bricksoft.com")]
 [assembly: AssemblyProduct("shrink")]
-[assembly: AssemblyCopyright("Copyright (C) 2010-2013 Kody Brown. Application and source code released under the MIT License.")]
+[assembly: AssemblyCopyright("Copyright (C) 2010-2013 Kody Brown. Application and source code released under th" +
+    "e MIT License.")]
 [assembly: ComVisible(false)]
 [assembly: CLSCompliant(false)]
 [assembly: Guid("594CA055-3BF8-47EC-B5C1-F8B57390396C")]
-[assembly: AssemblyVersion("1.4.30415.4")]
-[assembly: AssemblyFileVersion("1.4.30415.4")]
+[assembly: AssemblyVersion("1.4.30605.5")]
+[assembly: AssemblyFileVersion("1.4.30605.5")]
 
 
