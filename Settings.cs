@@ -70,6 +70,8 @@ namespace Bricksoft.PowerCode
 			this.file = file;
 		}
 
+		public void clear() { data.Clear(); }
+
 		public bool read() { return read(file); }
 
 		public bool read( string file )
