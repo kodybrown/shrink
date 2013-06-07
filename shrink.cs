@@ -139,13 +139,15 @@ namespace Bricksoft.DosToys
 					} else if (a.Equals("!center", StringComparison.CurrentCultureIgnoreCase)) {
 						center = false;
 
-					} else if (a.StartsWith("e", StringComparison.CurrentCultureIgnoreCase)) {
+					} else if (a.Equals("edit", StringComparison.CurrentCultureIgnoreCase)) {
+						LaunchUrl("notepad.exe", file);
+					} else if (a.Equals("email", StringComparison.CurrentCultureIgnoreCase)) {
 						LaunchUrl("mailto:Kody Brown <kody@bricksoft.com>");
-					} else if (a.StartsWith("w", StringComparison.CurrentCultureIgnoreCase)) {
+					} else if (a.Equals("web", StringComparison.CurrentCultureIgnoreCase)) {
 						LaunchUrl("http://bricksoft.com");
-					} else if (a.StartsWith("s", StringComparison.CurrentCultureIgnoreCase)) {
+					} else if (a.Equals("src", StringComparison.CurrentCultureIgnoreCase) || a.Equals("source", StringComparison.CurrentCultureIgnoreCase)) {
 						LaunchUrl("http://github.com/kodybrown/" + app);
-					} else if (a.StartsWith("l", StringComparison.CurrentCultureIgnoreCase)) {
+					} else if (a.Equals("license", StringComparison.CurrentCultureIgnoreCase)) {
 						LaunchUrl("http://opensource.org/licenses/MIT");
 
 					} else {
@@ -260,12 +262,17 @@ namespace Bricksoft.DosToys
 			return 0;
 		}
 
-		private static void LaunchUrl( string url )
-		{
+		private static void LaunchUrl(string file) { LaunchUrl(file, null); }
+
+		private static void LaunchUrl(string file, string args) {
 			ProcessStartInfo info = new ProcessStartInfo();
 
 			info.Verb = "open";
-			info.FileName = url;
+			info.FileName = file;
+
+			if (args != null && args.Length > 0) {
+				info.Arguments = args;
+			}
 
 			Process.Start(info);
 		}

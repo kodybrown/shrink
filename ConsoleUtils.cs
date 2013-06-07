@@ -126,7 +126,9 @@ namespace Bricksoft.PowerCode
 			Restore = 12
 		}
 
-		public static void MoveWindow( WindowPosition p )
+		public static void MoveWindow( WindowPosition p ) { MoveWindow(p, 0, 0); }
+
+		public static void MoveWindow( WindowPosition p, int cmargin, int rmargin )
 		{
 			if (p == WindowPosition.NotSet) {
 				return;
@@ -141,8 +143,8 @@ namespace Bricksoft.PowerCode
 			IntPtr hWin;
 			Rect rc;
 			Screen scr;
-			int maxColWidth = Console.LargestWindowWidth - 4,
-				maxColHeight = Console.LargestWindowHeight - 1;
+			int maxColWidth = Console.LargestWindowWidth - (4 + cmargin),
+				maxColHeight = Console.LargestWindowHeight - (1 + rmargin);
 
 			hWin = GetConsoleWindow();
 			GetWindowRect(hWin, out rc);
