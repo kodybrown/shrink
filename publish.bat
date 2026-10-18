@@ -1,40 +1,44 @@
-@setlocal
 @echo off
+setlocal
 
 set "AppName=shrink"
-set "ProjectFile=.\src\%AppName%\%AppName%.csproj"
+set "ProjectFile=%~dp0shrink.csproj"
 set "Configuration=Release"
-set "RuntimeIdentifier=win-x64"
 
 pushd "%~dp0"
+if errorlevel 1 exit /B 1
 
-:: TODO: update the project version in the .csproj file
+rem .NET Framework uses the installed Windows runtime; do not bundle a .NET runtime.
+dotnet publish "%ProjectFile%" -c %Configuration%
+if errorlevel 1 goto :failed
 
+rem Read the authoritative output location instead of assuming a source-local folder.
 set "PublishDir="
-for /f "delims=" %%P in ('dotnet msbuild "%ProjectFile%" -getProperty:PublishDir -p:Configuration^=%Configuration% -p:RuntimeIdentifier^=%RuntimeIdentifier%') do set "PublishDir=%%P"
+for /f "delims=" %%P in ('dotnet msbuild "%ProjectFile%" -getProperty:PublishDir -p:Configuration^=%Configuration%') do set "PublishDir=%%P"
 if not defined PublishDir (
   echo Unable to determine the evaluated PublishDir.
-  popd
-  pause
-  exit /B 1
+  goto :failed
+)
+if not exist "%PublishDir%%AppName%.exe" (
+  echo Published executable not found in "%PublishDir%".
+  goto :failed
 )
 
-echo Publishing to "%PublishDir%"
-dotnet publish "%ProjectFile%" -c %Configuration% -r %RuntimeIdentifier% --self-contained true /p:PublishSingleFile=true /p:PublishTrimmed=false
-if errorlevel 1 (
-  popd
-  pause
-  exit /B 1
-)
-
-if exist "%UserProfile%\Bin" (
+echo Published to "%PublishDir%"
+if /I "%~1"=="--install" (
+  if not exist "%UserProfile%\Bin" mkdir "%UserProfile%\Bin"
+  if errorlevel 1 goto :failed
   copy /Y "%PublishDir%%AppName%.exe" "%UserProfile%\Bin\"
-  if errorlevel 1 (
-    popd
-    pause
-    exit /B 1
-  )
+  if errorlevel 1 goto :failed
+  copy /Y "%PublishDir%%AppName%.exe.config" "%UserProfile%\Bin\"
+  if errorlevel 1 goto :failed
 )
 
 popd
 endlocal
+exit /B 0
+
+:failed
+popd
+endlocal
+exit /B 1

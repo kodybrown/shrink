@@ -45,6 +45,12 @@ namespace Bricksoft.DosToys
 
 		public static int Main( string[] arguments )
 		{
+			// Version queries also work without a console or a readable settings file.
+			if (arguments.Length == 1 && IsVersionArgument(arguments[0])) {
+				DisplayVersion();
+				return 0;
+			}
+
 			int widthMaximum = Console.LargestWindowWidth - 4;
 			int widthMinimum = 8;
 			int heightMaximum = Console.LargestWindowHeight - 1;
@@ -77,7 +83,7 @@ namespace Bricksoft.DosToys
 				if (int.TryParse(a, out value)) {
 					value = Math.Max(value, 4);
 					if (!width.HasValue && !skipWidth) {
-						if (value > widthMaximum) {
+						if (widthMaximum >= widthMinimum && value > widthMaximum) {
 							Console.WriteLine("{0," + appLen + "} | the maximum width allowed for the current screen is {1} columns. using maximum instead.", "** error", widthMaximum);
 							value = widthMaximum;
 						} else if (value < widthMinimum) {
@@ -86,7 +92,7 @@ namespace Bricksoft.DosToys
 						}
 						width = value;
 					} else if (!height.HasValue && !skipHeight) {
-						if (value > heightMaximum) {
+						if (heightMaximum >= heightMinimum && value > heightMaximum) {
 							Console.WriteLine("{0," + appLen + "} | the maximum height allowed for the current screen is {1} rows. using maximum instead.", "** error", heightMaximum);
 							value = heightMaximum;
 						} else if (value < heightMinimum) {
@@ -102,10 +108,10 @@ namespace Bricksoft.DosToys
 					if (a.Equals("-")) {
 						// This separator allows the user to skip (not set) the width parameter.
 						// For example: 'shrink.exe - 60' will only change the height and not the width,
-						// much like: 'shrink.exe 100' will only change the width. (a trailing '-' here will be ignored.)
-						if (!width.HasValue) {
+						// much like: 'shrink.exe 100 -' will only change the width. A third '-' skips centering.
+						if (!width.HasValue && !skipWidth) {
 							skipWidth = true;
-						} else if (!height.HasValue) {
+						} else if (!height.HasValue && !skipHeight) {
 							skipHeight = true;
 						} else {
 							skipCenter = true;
@@ -117,7 +123,11 @@ namespace Bricksoft.DosToys
 						a = a.TrimStart('-').TrimStart('/');
 					}
 
-					if (a.Equals("?") || a.StartsWith("h", StringComparison.CurrentCultureIgnoreCase)) {
+					if (IsVersionArgument(a)) {
+						DisplayVersion();
+						return 0;
+
+					} else if (a.Equals("?") || a.StartsWith("h", StringComparison.CurrentCultureIgnoreCase)) {
 						DisplayCopyright();
 						DisplayHelp(settings);
 						DisplayConfig(settings);
@@ -146,7 +156,7 @@ namespace Bricksoft.DosToys
 						center = false;
 
 					} else if (a.Equals("edit", StringComparison.CurrentCultureIgnoreCase)) {
-						LaunchUrl("notepad.exe", file);
+						LaunchUrl("notepad.exe", "\"" + file + "\"");
 					} else if (a.Equals("email", StringComparison.CurrentCultureIgnoreCase)) {
 						LaunchUrl("mailto:Kody Brown <kody@bricksoft.com>");
 					} else if (a.Equals("web", StringComparison.CurrentCultureIgnoreCase)) {
@@ -173,6 +183,13 @@ namespace Bricksoft.DosToys
 				return 0;
 			}
 
+			// Informational commands above remain usable when output is redirected.
+			// Resizing needs a live console; reject it before persisting any dimensions.
+			if (widthMaximum < widthMinimum || heightMaximum < heightMinimum) {
+				Console.Error.WriteLine("shrink requires an attached Windows console to resize the window.");
+				return 3;
+			}
+
 			// Write config values before they are (possibly) overwritten below.
 			if (writeToConfig) {
 				if (width.HasValue) {
@@ -188,12 +205,12 @@ namespace Bricksoft.DosToys
 			}
 
 			// If a value was not specified: use the value from config,
-			// otherwise use its current value.
+			// otherwise use its current value. An explicit skip bypasses saved defaults.
 			if (!width.HasValue) {
-				width = settings.contains("width") ? settings.attr<int>("width") : Console.WindowWidth;
+				width = !skipWidth && settings.contains("width") ? settings.attr<int>("width") : Console.WindowWidth;
 			}
 			if (!height.HasValue) {
-				height = settings.contains("height") ? settings.attr<int>("height") : Console.WindowHeight;
+				height = !skipHeight && settings.contains("height") ? settings.attr<int>("height") : Console.WindowHeight;
 			}
 			// If center was not specified, use the value from config,
 			// or default it to defaultCenter.
@@ -265,7 +282,20 @@ namespace Bricksoft.DosToys
 				Console.CursorLeft = 0;
 			}
 
-			return 0;
+			return error.Length > 0 ? 3 : 0;
+		}
+
+		private static bool IsVersionArgument( string argument )
+		{
+			string option = argument.Trim().TrimStart('-', '/');
+			return option.Equals("version", StringComparison.OrdinalIgnoreCase) || option.Equals("v", StringComparison.OrdinalIgnoreCase);
+		}
+
+		private static void DisplayVersion()
+		{
+			Assembly assembly = Assembly.GetExecutingAssembly();
+			AssemblyInformationalVersionAttribute version = (AssemblyInformationalVersionAttribute)Attribute.GetCustomAttribute(assembly, typeof(AssemblyInformationalVersionAttribute));
+			Console.WriteLine("shrink {0}", version.InformationalVersion);
 		}
 
 		private static void LaunchUrl( string file ) { LaunchUrl(file, null); }
@@ -299,7 +329,7 @@ namespace Bricksoft.DosToys
 		private static void DisplayHelp( Settings settings )
 		{
 			Console.WriteLine("\nUSAGE:");
-			Console.WriteLine("  {0}.exe [--config][--clear] width height center", app);
+			Console.WriteLine("  {0}.exe [width|-] [height|-] [center|!center] [options]", app);
 			Console.WriteLine();
 			//Console.WriteLine(" OPTIONS:");
 			Console.WriteLine("    width      sets the width of the console window.");
@@ -308,11 +338,19 @@ namespace Bricksoft.DosToys
 			Console.WriteLine();
 			Console.WriteLine("    if a value is not specified the config value will be used. to override config, use - in place of the value to not change it from the current.");
 			Console.WriteLine();
+			Console.WriteLine("    --help, -h, /?  displays usage, examples, and current configuration.");
+			Console.WriteLine("    --version, -v  displays the release version without changing the console.");
 			Console.WriteLine("    --clear    clears the values in config.");
 			Console.WriteLine("    --config   when used with other arguments, those values are applied then saved to config.");
 			Console.WriteLine("               when used without other arguments, only displays the config values.");
 			Console.WriteLine();
-			Console.WriteLine("    the position of the --config, --clear, and center options do not matter. it is assumed however, that width always comes before height.");
+			Console.WriteLine("    --!config  cancels an earlier --config for this invocation.");
+			Console.WriteLine("    --querywidth, --queryheight  returns the current dimension as the exit code.");
+			Console.WriteLine("    --edit     opens the settings file in Notepad.");
+			Console.WriteLine("    --debug    waits for a key after resizing.");
+			Console.WriteLine("    --email, --web, --src, --source, --license  opens the corresponding link.");
+			Console.WriteLine();
+			Console.WriteLine("    width always comes before height. --clear takes effect when encountered.");
 
 			DisplayExamples();
 		}
@@ -323,7 +361,7 @@ namespace Bricksoft.DosToys
 			Console.WriteLine("\nEXAMPLES:");
 			Console.WriteLine("  {0,-" + w + "} displays all config values.", app + ".exe --config");
 			Console.WriteLine();
-			Console.WriteLine("  {0,-" + w + "} sets the console window, height, and centers the window.", app + ".exe 130 40 center");
+			Console.WriteLine("  {0,-" + w + "} sets the console width and height, and centers the window.", app + ".exe 130 40 center");
 			Console.WriteLine("  {0,-" + w + "} sets the console height and centers the window.", app + ".exe - 40 center");
 			Console.WriteLine("  {0,-" + w + "} sets the console width.", app + ".exe 130");
 			Console.WriteLine("  {0,-" + w + "} sets the console height.", app + ".exe - 40");
@@ -336,8 +374,12 @@ namespace Bricksoft.DosToys
 		private static void DisplayConfig( Settings settings )
 		{
 			Console.WriteLine("\nCURRENT WINDOW:");
-			Console.WriteLine("  width  = {0,3}", Console.WindowWidth);
-			Console.WriteLine("  height = {0,3}", Console.WindowHeight);
+			try {
+				Console.WriteLine("  width  = {0,3}", Console.WindowWidth);
+				Console.WriteLine("  height = {0,3}", Console.WindowHeight);
+			} catch (IOException) {
+				Console.WriteLine("  unavailable (no attached console)");
+			}
 			Console.WriteLine("\nSAVED CONFIG:");
 			Console.WriteLine("  width  = {0}", settings.contains("width") ? settings.attr<int>("width").ToString() : "not set");
 			Console.WriteLine("  height = {0}", settings.contains("height") ? settings.attr<int>("height").ToString() : "not set");
