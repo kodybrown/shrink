@@ -1,0 +1,6 @@
+"MD012": false # Ignore multiple consecutive blank lines
+"MD013": false # Ignore line length
+"MD024": false # Ignore multiple headers with the same name
+"MD029": false # Ignore ordered list item prefix
+"MD032": false # Allow no blank lines around lists
+"MD033": false # Allow inline HTML
