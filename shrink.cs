@@ -1,18 +1,18 @@
-﻿/*!
+/*!
 	Copyright (C) 2010-2013 Kody Brown (kody@bricksoft.com).
-	
+
 	MIT License:
-	
+
 	Permission is hereby granted, free of charge, to any person obtaining a copy
 	of this software and associated documentation files (the "Software"), to
 	deal in the Software without restriction, including without limitation the
 	rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
 	sell copies of the Software, and to permit persons to whom the Software is
 	furnished to do so, subject to the following conditions:
-	
+
 	The above copyright notice and this permission notice shall be included in
 	all copies or substantial portions of the Software.
-	
+
 	THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 	IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 	FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -126,14 +126,20 @@ namespace Bricksoft.DosToys
 					} else if (a.Equals("debug", StringComparison.CurrentCultureIgnoreCase)) {
 						DEBUG = true;
 
-					} else if (a.Equals("clear", StringComparison.CurrentCultureIgnoreCase)) {
-						settings.clear();
-						settings.write();
+          } else if (a.Equals("clear", StringComparison.CurrentCultureIgnoreCase)) {
+              settings.clear();
+              settings.write();
+
+          } else if (a.Equals("querywidth", StringComparison.CurrentCultureIgnoreCase)) {
+              return Console.WindowWidth;
+          } else if (a.Equals("queryheight", StringComparison.CurrentCultureIgnoreCase)) {
+              return Console.WindowHeight;
 
 					} else if (a.Equals("config", StringComparison.CurrentCultureIgnoreCase)) {
 						writeToConfig = true;
 					} else if (a.Equals("!config", StringComparison.CurrentCultureIgnoreCase)) {
 						writeToConfig = false;
+
 					} else if (a.Equals("center", StringComparison.CurrentCultureIgnoreCase)) {
 						center = true;
 					} else if (a.Equals("!center", StringComparison.CurrentCultureIgnoreCase)) {
@@ -159,7 +165,7 @@ namespace Bricksoft.DosToys
 
 			DisplayAppName();
 
-			// If '--config' was specified without any other arguments, 
+			// If '--config' was specified without any other arguments,
 			// it will only output the current values from config.
 			if (writeToConfig && !width.HasValue && !height.HasValue && !center.HasValue) {
 				DisplayCopyright();
@@ -262,9 +268,10 @@ namespace Bricksoft.DosToys
 			return 0;
 		}
 
-		private static void LaunchUrl(string file) { LaunchUrl(file, null); }
+		private static void LaunchUrl( string file ) { LaunchUrl(file, null); }
 
-		private static void LaunchUrl(string file, string args) {
+		private static void LaunchUrl( string file, string args )
+		{
 			ProcessStartInfo info = new ProcessStartInfo();
 
 			info.Verb = "open";

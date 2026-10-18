@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -98,7 +98,7 @@
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="$(MSBuildExtensionsPath)\MSBuildCommunityTasks\MSBuild.Community.Tasks.Targets" />
   <PropertyGroup>
-    <PostBuildEvent>if exist "C:\Kody\Root" xcopy "$(TargetPath)" "C:\Kody\Root" /y</PostBuildEvent>
+    <PostBuildEvent>if exist "C:\bin" xcopy "$(TargetPath)" "C:\bin" /y</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup Label="Versioning">
     <VersioningMajor>1</VersioningMajor>
@@ -106,7 +106,7 @@
     <CommitVersion>N/A</CommitVersion>
   </PropertyGroup>
   <PropertyGroup>
-    <GitBinPath>C:\Tools\Git\bin</GitBinPath>
+    <GitBinPath>C:\Users\Kody\AppData\Local\scoop\apps\git\1.9.4\bin</GitBinPath>
   </PropertyGroup>
   <UsingTask TaskName="GitVersion" AssemblyFile="C:\Tools\GitVersion.MSBuild.dll" />
   <Target Name="BeforeBuild">
