@@ -33,6 +33,8 @@ namespace Bricksoft.PowerCode
 		private Dictionary<string, object> data;
 		private string file;
 
+		public string FilePath { get { return file; } }
+
 		//public object this[string key]
 		//{
 		//	get
@@ -94,8 +96,12 @@ namespace Bricksoft.PowerCode
 			using (StreamReader reader = File.OpenText(file)) {
 				while (!reader.EndOfStream) {
 					l = reader.ReadLine();
-					if (l == null || l.Length == 0 || l.StartsWith(";") || l.StartsWith("#") || !l.Contains("=")) {
+					l = l == null ? "" : l.Trim();
+					if (l.Length == 0 || l.StartsWith(";") || l.StartsWith("#")) {
 						continue;
+					}
+					if (!l.Contains("=")) {
+						throw new InvalidDataException("Expected name=value in settings file: " + file);
 					}
 
 					ar = l.Split(new char[] { '=' }, 2);
@@ -149,6 +155,8 @@ namespace Bricksoft.PowerCode
 		public bool write( string file )
 		{
 			string value;
+			// Reads never create directories; only an explicit save/clear needs one.
+			Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(file)));
 
 			//this.file = file;
 

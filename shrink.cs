@@ -45,6 +45,25 @@ namespace Bricksoft.DosToys
 
 		public static int Main( string[] arguments )
 		{
+			try {
+				return Run(arguments);
+			} catch (InvalidDataException ex) {
+				Console.Error.WriteLine("shrink: " + ex.Message);
+				return 4;
+			} catch (IOException ex) {
+				Console.Error.WriteLine("shrink: " + ex.Message);
+				return 4;
+			} catch (UnauthorizedAccessException ex) {
+				Console.Error.WriteLine("shrink: " + ex.Message);
+				return 4;
+			} catch (ArgumentException ex) {
+				Console.Error.WriteLine("shrink: " + ex.Message);
+				return 4;
+			}
+		}
+
+		private static int Run( string[] arguments )
+		{
 			// Version queries also work without a console or a readable settings file.
 			if (arguments.Length == 1 && IsVersionArgument(arguments[0])) {
 				DisplayVersion();
@@ -73,9 +92,19 @@ namespace Bricksoft.DosToys
 			appLen = Math.Max((app + ".exe").Length, 9);
 			appPadding = new string(' ', appLen);
 
-			file = Assembly.GetEntryAssembly().Location + ".settings";
+			file = SettingsLocation.Resolve(ref arguments);
 			settings = new Settings(file);
 			settings.read();
+			// Invalid selected values must not silently become zero or cause fallback.
+			foreach (string dimension in new string[] { "width", "height" }) {
+				if (settings.contains(dimension) && (!int.TryParse(settings.attr<string>(dimension), out value) || value <= 0)) {
+					throw new InvalidDataException("Invalid " + dimension + " in settings file: " + file);
+				}
+			}
+			bool savedCenter;
+			if (settings.contains("center") && !bool.TryParse(settings.attr<string>("center"), out savedCenter)) {
+				throw new InvalidDataException("Invalid center in settings file: " + file);
+			}
 
 			for (int i = 0; i < arguments.Length; i++) {
 				string a = arguments[i].Trim();
@@ -340,6 +369,7 @@ namespace Bricksoft.DosToys
 			Console.WriteLine();
 			Console.WriteLine("    --help, -h, /?  displays usage, examples, and current configuration.");
 			Console.WriteLine("    --version, -v  displays the release version without changing the console.");
+			Console.WriteLine("    --config-file PATH  uses exactly this existing settings file; no fallback.");
 			Console.WriteLine("    --clear    clears the values in config.");
 			Console.WriteLine("    --config   when used with other arguments, those values are applied then saved to config.");
 			Console.WriteLine("               when used without other arguments, only displays the config values.");
@@ -373,6 +403,7 @@ namespace Bricksoft.DosToys
 
 		private static void DisplayConfig( Settings settings )
 		{
+			Console.WriteLine("\nSETTINGS FILE:\n  {0}", settings.FilePath);
 			Console.WriteLine("\nCURRENT WINDOW:");
 			try {
 				Console.WriteLine("  width  = {0,3}", Console.WindowWidth);

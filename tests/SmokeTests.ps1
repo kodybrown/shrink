@@ -18,6 +18,8 @@ if ($ConsoleWorker) {
             $info.FileName = $ExecutablePath
             $info.Arguments = $Arguments
             $info.UseShellExecute = $false
+            $info.WorkingDirectory = Join-Path (Split-Path $ExecutablePath) 'cwd'
+            $info.EnvironmentVariables['APPDATA'] = Join-Path (Split-Path $ExecutablePath) 'roaming'
             $process = [System.Diagnostics.Process]::Start($info)
             $process.WaitForExit()
             Assert-Equal $process.ExitCode $Expected "Exit code for '$Arguments'"
@@ -30,7 +32,7 @@ if ($ConsoleWorker) {
         [Console]::BufferWidth = [Math]::Max(110, [Console]::BufferWidth)
         [Console]::BufferHeight = [Math]::Max(40, [Console]::BufferHeight)
         [Console]::SetWindowSize(90, 28)
-        $settings = "$ExecutablePath.settings"
+        $settings = Join-Path (Split-Path $ExecutablePath) 'roaming\shrink\shrink.settings'
 
         Invoke-Shrink ''
         Assert-Equal ([Console]::WindowWidth) 90 'No-config width'
@@ -95,31 +97,82 @@ try {
     $copy = Join-Path $sandbox 'shrink.exe'
     Copy-Item -LiteralPath $ExecutablePath -Destination $copy
     Copy-Item -LiteralPath "$ExecutablePath.config" -Destination "$copy.config"
+    $cwd = Join-Path $sandbox 'cwd'
+    $roaming = Join-Path $sandbox 'roaming'
+    $settings = Join-Path $roaming 'shrink\shrink.settings'
+    New-Item -ItemType Directory -Path $cwd | Out-Null
+    function Invoke-Isolated([string[]] $Arguments, [int] $Expected = 0, [string] $Program = $copy) {
+        $info = New-Object Diagnostics.ProcessStartInfo
+        $info.FileName = $Program
+        # Arguments here are test-owned tokens; paths are quoted individually.
+        $info.Arguments = ($Arguments | ForEach-Object { '"' + $_ + '"' }) -join ' '
+        $info.UseShellExecute = $false
+        $info.WorkingDirectory = $cwd
+        $info.EnvironmentVariables['APPDATA'] = $roaming
+        $info.RedirectStandardOutput = $true
+        $info.RedirectStandardError = $true
+        $process = [Diagnostics.Process]::Start($info)
+        $output = $process.StandardOutput.ReadToEnd()
+        $errorText = $process.StandardError.ReadToEnd()
+        $process.WaitForExit()
+        $exitCode = $process.ExitCode
+        $process.Dispose()
+        if ($exitCode -ne $Expected) { throw "Expected exit $Expected for '$Arguments', got $exitCode : $errorText $output" }
+        return $output
+    }
+    function Assert-Contains([string] $Actual, [string] $Expected) {
+        if (-not $Actual.Contains($Expected)) { throw "Expected output to contain '$Expected': $Actual" }
+    }
     $fileVersion = [Diagnostics.FileVersionInfo]::GetVersionInfo($copy)
     foreach ($option in @('--version', '-v', '/VERSION')) {
-        $output = & $copy $option
-        if ($LASTEXITCODE -ne 0 -or $output -ne "shrink $($fileVersion.ProductVersion)") {
-            throw "Version mismatch for $option : $output"
-        }
+        $output = Invoke-Isolated @($option)
+        if ($output.Trim() -ne "shrink $($fileVersion.ProductVersion)") { throw "Version mismatch: $output" }
     }
-    $help = & $copy --help | Out-String
-    if ($LASTEXITCODE -ne 0 -or $help -notmatch '--version' -or $help -notmatch '--querywidth') {
-        throw 'Help failed with redirected output.'
-    }
-    if (Test-Path -LiteralPath "$copy.settings") { throw 'Informational commands created settings.' }
+    $help = Invoke-Isolated @('--help')
+    Assert-Contains $help '--config-file'
+    Assert-Contains $help '--querywidth'
+    Assert-Contains (Invoke-Isolated @('--config')) $settings
+    if (Test-Path -LiteralPath $roaming) { throw 'Read-only commands created the Roaming directory.' }
 
-    # Explicit redirection exercises the no-console failure without changing defaults.
-    $info = New-Object Diagnostics.ProcessStartInfo
-    $info.FileName = $copy
-    $info.Arguments = '80 25 --config'
-    $info.UseShellExecute = $false
-    $info.RedirectStandardOutput = $true
-    $info.RedirectStandardError = $true
-    $process = [Diagnostics.Process]::Start($info)
-    $process.WaitForExit()
-    if ($process.ExitCode -ne 3) { throw "Expected no-console exit code 3, got $($process.ExitCode)." }
-    $process.Dispose()
-    if (Test-Path -LiteralPath "$copy.settings") { throw 'No-console failure wrote settings.' }
+    # The executable's directory, working directory, and fallback are independent.
+    $exeSettings = Join-Path $sandbox 'shrink.settings'
+    $cwdSettings = Join-Path $cwd 'shrink.settings'
+    New-Item -ItemType Directory -Path (Split-Path $settings) | Out-Null
+    [IO.File]::WriteAllText($settings, "width=91`n")
+    Assert-Contains (Invoke-Isolated @('--config')) 'width  = 91'
+    [IO.File]::WriteAllText($exeSettings, "width=92`n")
+    Assert-Contains (Invoke-Isolated @('--config')) 'width  = 92'
+    [IO.File]::WriteAllText($cwdSettings, "width=93`n")
+    Assert-Contains (Invoke-Isolated @('--config')) 'width  = 93'
+    $explicit = Join-Path $cwd 'chosen settings.txt'
+    [IO.File]::WriteAllText($explicit, "width=94`n")
+    Assert-Contains (Invoke-Isolated @('--config', '--config-file', 'chosen settings.txt')) 'width  = 94'
+    Invoke-Isolated @('--config-file', 'missing.settings', '--config') 4 | Out-Null
+    Invoke-Isolated @('--config-file') 4 | Out-Null
+    Invoke-Isolated @('--config-file', $explicit, '--config-file', $explicit) 4 | Out-Null
+    [IO.File]::WriteAllText($cwdSettings, "width=broken`n")
+    Invoke-Isolated @('--config') 4 | Out-Null
+    [IO.File]::WriteAllText($cwdSettings, 'not a settings document')
+    Invoke-Isolated @('--config') 4 | Out-Null
+    Remove-Item -LiteralPath $cwdSettings
+    Remove-Item -LiteralPath $exeSettings
+
+    $renamed = Join-Path $sandbox 'custom.tool.exe'
+    Copy-Item -LiteralPath $copy -Destination $renamed
+    Copy-Item -LiteralPath "$copy.config" -Destination "$renamed.config"
+    $renamedSettings = Join-Path $cwd 'custom.tool.settings'
+    [IO.File]::WriteAllText($renamedSettings, "width=95`n")
+    Assert-Contains (Invoke-Isolated @('--config') 0 $renamed) 'width  = 95'
+    Remove-Item -LiteralPath $renamedSettings
+    Assert-Contains (Invoke-Isolated @('--config') 0 $renamed) $settings
+    $before = [IO.File]::ReadAllText($settings)
+    Invoke-Isolated @('--help') | Out-Null
+    if ([IO.File]::ReadAllText($settings) -ne $before) { throw 'Read-only settings changed.' }
+    Remove-Item -LiteralPath $settings
+
+    # With redirected handles, reject resize/save before recreating settings.
+    Invoke-Isolated @('80', '25', '--config') 3 | Out-Null
+    if (Test-Path -LiteralPath $settings) { throw 'No-console failure wrote settings.' }
 
     $result = Join-Path $sandbox 'result.txt'
     $worker = Start-Process "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -WindowStyle Hidden -PassThru -Wait -ArgumentList @(
@@ -129,7 +182,7 @@ try {
     if (-not (Test-Path -LiteralPath $result)) { throw 'Console worker did not produce a result.' }
     Get-Content -LiteralPath $result
     if ($worker.ExitCode -ne 0) { throw 'Console smoke tests failed.' }
-    Write-Output 'PASS: version metadata/aliases, redirected help, no-console error, and settings isolation.'
+    Write-Output 'PASS: settings discovery/precedence, explicit selection, renamed executables, invalid settings, read-only preservation, version aliases, and no-console errors.'
 } finally {
     # Validate the absolute generated target before recursively removing test data.
     $resolved = (Resolve-Path -LiteralPath $sandbox).Path

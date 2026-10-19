@@ -10,3 +10,6 @@
 **/*.suo
 **/*.user
 **/~$*
+
+# Generated installer deliveries
+/artifacts/

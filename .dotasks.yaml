@@ -1,0 +1,26 @@
+version: 1
+name: shrink
+description: Resize and optionally center a Windows console window.
+settings:
+  solution: shrink.sln
+  project: shrink.csproj
+  app:
+    # Version is read from shrink.csproj by create-installer; do not duplicate it.
+    git-hash: short
+    dirty-suffix: true
+  installer:
+    config: .tasks/installer.yaml
+    output: artifacts/installers
+    installer_file: 'artifacts/installers/windows-x64/shrink-*/shrink-setup-v${version}-se.exe'
+    select: highest-version
+  doinstall:
+    # Query this checkout for prebuilt tools, never build or install it implicitly.
+    # --doinstall-tools overrides the evaluated Cargo output directory.
+    source: ../doinstall
+targets:
+  _/dotnet/build:
+    defaults:
+      configuration: Release
+  _/dotnet/run:
+    defaults:
+      configuration: Release

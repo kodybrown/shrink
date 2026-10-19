@@ -1,0 +1,11 @@
+description: Check prerequisites, build and test shrink, and check Git whitespace.
+options:
+  - {name: configuration, alias: c, choices: [Debug, Release], default: Release}
+steps:
+  - run: _/dotnet/check
+  - run: test
+    with:
+      configuration: {parameter: configuration}
+  - exec:
+      executable: git
+      arguments: [diff, --check]

@@ -1,0 +1,38 @@
+schema: 1
+application:
+  id: shrink
+  name: shrink
+  author: Kody Brown
+  copyright: Copyright (C) 2010-2026 Kody Brown
+  description: Resize and optionally center the current Windows console window.
+build-steps:
+  - run: publish
+    with:
+      configuration: Release
+      app-version: '${version}'
+      stage-dir: '${staging}/app'
+    gather:
+      - from: '${staging}/app'
+        files: ['shrink.exe', 'shrink.exe.config', 'README.md', 'LICENSE.txt', 'defaults/**']
+  - run: _/doinstall/assemble-self-extracting
+    with:
+      builder: '${builder}'
+      installer: '${installer}'
+      launcher-template: '${launcher-template}'
+      config: '${config}'
+      output: '${package}'
+      result-file: '${result-file}'
+runtime:
+  interactive: true
+  commands:
+    - {name: shrink, executable: shrink.exe}
+  defaults:
+    windows:
+      add-to-path: true
+  # app-data means Roaming AppData on Windows and XDG configuration on Unix.
+  # Existing files are preserved byte-for-byte, including on upgrades.
+  settings-files:
+    - source: defaults/shrink.settings
+      destination: '${app-data}/shrink/shrink.settings'
+      format: text
+      if-exists: preserve

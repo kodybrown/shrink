@@ -1,0 +1,7 @@
+description: Run an existing shrink installer; never creates or rebuilds a package.
+options:
+  - {name: installer-args, default: '[]', description: JSON array of exact installer argument tokens.}
+steps:
+  - run: _/installer/install
+    with:
+      installer-args: {parameter: installer-args}
